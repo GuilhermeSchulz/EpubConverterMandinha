@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>PDF → EPUB</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0d10;--surface:#15151a;--surface2:#1c1c23;
+  --border:#252530;--border2:#32323f;
+  --accent:#7c6af7;--accent2:#a78bfa;--accent3:#c4b5fd;
+  --success:#34d399;--error:#f87171;--warn:#fbbf24;
+  --text:#e2e2f0;--muted:#6b6b82;--dim:#3a3a4a;
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+  --r:10px;
+}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);color:var(--text);font-family:var(--sans);font-weight:300;
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;
+  padding:2.5rem 1rem 5rem;
+}
+
+/* ─── Header ─── */
+header{text-align:center;margin-bottom:2.5rem;max-width:560px}
+.eyebrow{
+  font-family:var(--mono);font-size:.7rem;font-weight:600;letter-spacing:.2em;
+  color:var(--accent);text-transform:uppercase;margin-bottom:1rem;
+  display:inline-flex;align-items:center;gap:.5rem;
+}
+.eyebrow::before,.eyebrow::after{content:'';display:block;width:24px;height:1px;background:var(--accent);opacity:.4}
+h1{font-size:clamp(2rem,6vw,3rem);font-weight:300;letter-spacing:-.02em;line-height:1.1}
+h1 em{font-style:normal;color:var(--accent2);font-weight:500}
+.subtitle{margin-top:.75rem;color:var(--muted);font-size:.9rem;line-height:1.7}
+
+/* ─── Layout ─── */
+.layout{display:grid;grid-template-columns:1fr;gap:1.2rem;width:100%;max-width:640px}
+
+/* ─── Card ─── */
+.card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);padding:1.75rem;
+}
+
+/* ─── Drop zone ─── */
+#drop-zone{
+  border:2px dashed var(--border2);border-radius:8px;padding:2.2rem 1.5rem;
+  text-align:center;cursor:pointer;transition:border-color .2s,background .2s;
+  position:relative;
+}
+#drop-zone:hover,#drop-zone.drag-over{border-color:var(--accent);background:rgba(124,106,247,.05)}
+#drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.drop-icon{font-size:2rem;margin-bottom:.6rem;display:block}
+.drop-label{font-size:.92rem;color:var(--text);margin-bottom:.3rem}
+.drop-hint{font-size:.75rem;color:var(--muted);font-family:var(--mono)}
+
+/* ─── File info bar ─── */
+#file-bar{
+  display:none;margin-top:1rem;
+  background:rgba(124,106,247,.07);border:1px solid rgba(124,106,247,.2);
+  border-radius:8px;padding:.75rem 1rem;align-items:center;gap:.75rem;
+}
+#file-bar.visible{display:flex}
+.file-icon{font-size:1.3rem;flex-shrink:0}
+.file-meta{flex:1;overflow:hidden}
+.file-name{font-family:var(--mono);font-size:.8rem;color:var(--accent2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-size{font-size:.73rem;color:var(--muted);margin-top:.15rem}
+.btn-x{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:.2rem;line-height:1;transition:color .2s}
+.btn-x:hover{color:var(--error)}
+
+/* ─── Preview ─── */
+#preview-wrap{display:none;margin-top:1rem}
+#preview-wrap.visible{display:block}
+.preview-label{font-family:var(--mono);font-size:.7rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.5rem}
+#preview-canvas{
+  display:block;width:100%;max-height:240px;object-fit:contain;
+  border-radius:6px;border:1px solid var(--border2);background:#111;
+}
+.preview-info{
+  display:flex;justify-content:space-between;margin-top:.4rem;
+  font-family:var(--mono);font-size:.7rem;color:var(--muted);
+}
+
+/* ─── Convert button ─── */
+#btn-convert{
+  margin-top:1.2rem;width:100%;padding:.85rem;
+  background:var(--accent);color:#fff;border:none;border-radius:8px;
+  font-family:var(--sans);font-size:.92rem;font-weight:500;letter-spacing:.02em;
+  cursor:pointer;transition:background .2s,opacity .2s;
+  display:flex;align-items:center;justify-content:center;gap:.5rem;
+}
+#btn-convert:hover:not(:disabled){background:#6a58e0}
+#btn-convert:disabled{opacity:.35;cursor:not-allowed}
+
+/* ─── Progress ─── */
+#progress-card{display:none}
+#progress-card.visible{display:block}
+
+.prog-header{
+  display:flex;justify-content:space-between;align-items:baseline;
+  margin-bottom:.6rem;
+}
+.prog-step{font-size:.88rem;color:var(--text)}
+.prog-pct{font-family:var(--mono);font-size:1.4rem;font-weight:600;color:var(--accent2)}
+
+.prog-bar-bg{background:var(--dim);border-radius:999px;height:6px;overflow:hidden;margin-bottom:1rem}
+.prog-bar-fill{
+  height:100%;border-radius:999px;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));
+  width:0%;transition:width .35s ease;
+}
+
+.prog-log{
+  background:var(--surface2);border-radius:6px;padding:.75rem;
+  font-family:var(--mono);font-size:.72rem;color:var(--muted);
+  max-height:120px;overflow-y:auto;line-height:1.7;
+  border:1px solid var(--border);
+}
+.prog-log .log-line{display:block}
+.prog-log .log-ok{color:var(--success)}
+.prog-log .log-warn{color:var(--warn)}
+.prog-log .log-err{color:var(--error)}
+
+/* ─── Status & Download ─── */
+#status{display:none;margin-top:1rem;border-radius:8px;padding:.8rem 1rem;font-size:.87rem;line-height:1.5}
+#status.success{display:block;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.25);color:var(--success)}
+#status.error{display:block;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);color:var(--error)}
+
+#btn-dl{
+  display:none;margin-top:.85rem;width:100%;padding:.85rem;
+  background:transparent;color:var(--success);border:1px solid var(--success);
+  border-radius:8px;font-family:var(--sans);font-size:.92rem;font-weight:500;
+  cursor:pointer;transition:background .2s;text-align:center;text-decoration:none;
+}
+#btn-dl:hover{background:rgba(52,211,153,.08)}
+#btn-dl.visible{display:block}
+
+/* ─── OCR notice ─── */
+.ocr-badge{
+  display:inline-flex;align-items:center;gap:.35rem;
+  background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);
+  color:var(--warn);border-radius:4px;padding:.2rem .55rem;
+  font-family:var(--mono);font-size:.7rem;font-weight:600;letter-spacing:.05em;
+  margin-left:.5rem;vertical-align:middle;
+}
+
+/* ─── Footer ─── */
+footer{margin-top:3rem;font-size:.75rem;color:var(--muted);text-align:center;font-family:var(--mono);line-height:2}
+footer a{color:var(--accent2);text-decoration:none}
+footer a:hover{text-decoration:underline}
+code{background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:.1em .4em;color:var(--accent3)}
+
+/* ─── Init overlay ─── */
+#init-bar{
+  position:fixed;bottom:0;left:0;right:0;z-index:100;
+  background:var(--surface);border-top:1px solid var(--border);
+  padding:.75rem 1.5rem;display:flex;align-items:center;gap:1rem;
+}
+#init-bar.hidden{display:none}
+.init-dot{
+  width:8px;height:8px;border-radius:50%;background:var(--accent);
+  animation:pulse 1s ease-in-out infinite;flex-shrink:0;
+}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.2}}
+.init-text{font-family:var(--mono);font-size:.75rem;color:var(--muted);flex:1}
+.init-pct{font-family:var(--mono);font-size:.75rem;color:var(--accent2);font-weight:600}
+
+@media(max-width:480px){
+  body{padding:1.5rem .75rem 4rem}
+  .card{padding:1.25rem}
+}
+</style>
+</head>
+<body>
+
+<!-- Init bar (Pyodide loading) -->
+<div id="init-bar">
+  <div class="init-dot"></div>
+  <span class="init-text" id="init-text">Carregando ambiente Python…</span>
+  <span class="init-pct" id="init-pct">0%</span>
+</div>
+
+<header>
+  <div class="eyebrow">Conversor de documentos</div>
+  <h1>PDF <em>→ EPUB</em></h1>
+  <p class="subtitle">
+    Converte PDFs com texto ou escaneados (OCR).<br>
+    Tudo roda no seu navegador — nenhum arquivo sai do seu computador.
+  </p>
+</header>
+
+<div class="layout">
+
+  <!-- Upload card -->
+  <div class="card">
+    <div id="drop-zone">
+      <input type="file" id="file-input" accept=".pdf"/>
+      <span class="drop-icon">📄</span>
+      <p class="drop-label">Arraste o PDF aqui ou clique para selecionar</p>
+      <p class="drop-hint">apenas .pdf · processado localmente</p>
+    </div>
+
+    <!-- File bar -->
+    <div id="file-bar">
+      <span class="file-icon">📎</span>
+      <div class="file-meta">
+        <div class="file-name" id="fname"></div>
+        <div class="file-size" id="fsize"></div>
+      </div>
+      <button class="btn-x" id="btn-clear">✕</button>
+    </div>
+
+    <!-- Preview -->
+    <div id="preview-wrap">
+      <div class="preview-label">Pré-visualização · página 1</div>
+      <canvas id="preview-canvas"></canvas>
+      <div class="preview-info">
+        <span id="prev-pages"></span>
+        <span id="prev-dims"></span>
+      </div>
+    </div>
+
+    <button id="btn-convert" disabled>Converter para EPUB</button>
+  </div>
+
+  <!-- Progress card -->
+  <div class="card" id="progress-card">
+    <div class="prog-header">
+      <span class="prog-step" id="prog-step">Aguardando…</span>
+      <span class="prog-pct" id="prog-pct">0%</span>
+    </div>
+    <div class="prog-bar-bg"><div class="prog-bar-fill" id="prog-bar"></div></div>
+    <div class="prog-log" id="prog-log"></div>
+
+    <div id="status"></div>
+    <a id="btn-dl" href="#" download>⬇ Baixar EPUB</a>
+  </div>
+
+</div><!-- /layout -->
+
+<footer>
+  Funciona 100% offline após carregado · código aberto no
+  <a href="https://github.com" target="_blank">GitHub Pages</a><br>
+  Pyodide · PDF.js · Tesseract.js
+</footer>
+
+<!-- ═══════════════════════════════════════════════════
+     Scripts
+═══════════════════════════════════════════════════ -->
+
+<!-- PDF.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs" type="module" id="pdfjs-script"></script>
+
+<!-- Tesseract.js -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+<script type="module">
+// ── Import PDF.js ──────────────────────────────────────
+import * as pdfjsLib from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs';
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
+window._pdfjs = pdfjsLib;
+
+// ── DOM refs ───────────────────────────────────────────
+const dropZone    = document.getElementById('drop-zone');
+const fileInput   = document.getElementById('file-input');
+const fileBar     = document.getElementById('file-bar');
+const fnameEl     = document.getElementById('fname');
+const fsizeEl     = document.getElementById('fsize');
+const btnClear    = document.getElementById('btn-clear');
+const previewWrap = document.getElementById('preview-wrap');
+const previewCanvas = document.getElementById('preview-canvas');
+const prevPages   = document.getElementById('prev-pages');
+const prevDims    = document.getElementById('prev-dims');
+const btnConvert  = document.getElementById('btn-convert');
+const progressCard= document.getElementById('progress-card');
+const progStep    = document.getElementById('prog-step');
+const progPct     = document.getElementById('prog-pct');
+const progBar     = document.getElementById('prog-bar');
+const progLog     = document.getElementById('prog-log');
+const statusEl    = document.getElementById('status');
+const btnDl       = document.getElementById('btn-dl');
+const initBar     = document.getElementById('init-bar');
+const initText    = document.getElementById('init-text');
+const initPct     = document.getElementById('init-pct');
+
+// ── State ──────────────────────────────────────────────
+let selectedFile  = null;
+let pdfDoc        = null;   // PDF.js doc
+let pyodide       = null;
+let pyReady       = false;
+
+// ── Utils ──────────────────────────────────────────────
+function fmt(bytes){
+  if(bytes<1024)return bytes+' B';
+  if(bytes<1048576)return(bytes/1024).toFixed(1)+' KB';
+  return(bytes/1048576).toFixed(2)+' MB';
+}
+
+function setProgress(pct, step){
+  progBar.style.width = pct+'%';
+  progPct.textContent = Math.round(pct)+'%';
+  progStep.textContent = step;
+}
+
+function log(msg, cls=''){
+  const line = document.createElement('span');
+  line.className = 'log-line'+(cls?' '+cls:'');
+  line.textContent = '› '+msg;
+  progLog.appendChild(line);
+  progLog.scrollTop = progLog.scrollHeight;
+}
+
+function showStatus(type, msg){
+  statusEl.className = type;
+  statusEl.innerHTML = msg;
+}
+
+function clearStatus(){
+  statusEl.className='';statusEl.textContent='';
+  btnDl.classList.remove('visible');
+}
+
+// ── Load Pyodide ───────────────────────────────────────
+async function loadPyodide(){
+  initText.textContent = 'Carregando Pyodide…';
+  initPct.textContent  = '0%';
+
+  // Load pyodide script dynamically
+  await new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js';
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+
+  initText.textContent = 'Iniciando runtime Python…';
+  initPct.textContent  = '10%';
+
+  pyodide = await window.loadPyodide({
+    indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/',
+    stdout: (msg) => console.log('[py]', msg),
+    stderr: (msg) => console.warn('[py]', msg),
+  });
+
+  initText.textContent = 'Instalando pdfminer.six…';
+  initPct.textContent  = '35%';
+
+  await pyodide.loadPackage('micropip');
+  const micropip = pyodide.pyimport('micropip');
+
+  await micropip.install('pdfminer.six');
+  initText.textContent = 'Instalando ebooklib…';
+  initPct.textContent  = '65%';
+
+  // ebooklib may need lxml — use zipfile-based EPUB builder instead (more reliable)
+  // Just verify pdfminer works
+  initText.textContent = 'Preparando conversor…';
+  initPct.textContent  = '85%';
+
+  // Define the Python EPUB builder using only stdlib (zipfile)
+  await pyodide.runPythonAsync(`
+import zipfile, io, re, textwrap
+from datetime import datetime
+
+def clean_text(text):
+    text = re.sub(r'[ \\t]+', ' ', text)
+    lines = [l.strip() for l in text.splitlines()]
+    # Rejoin hyphenated line breaks
+    result = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if line.endswith('-') and i+1 < len(lines):
+            line = line[:-1] + lines[i+1]
+            i += 2
+        else:
+            result.append(line)
+            i += 1
+    return '\\n'.join(result)
+
+def is_heading(text):
+    words = text.split()
+    if not words: return False
+    if len(words) > 12 or len(text) > 100: return False
+    if text.rstrip().endswith(('.', ',', ';', ':')): return False
+    if text.isupper() and len(words) >= 1: return True
+    caps = sum(1 for w in words if w and w[0].isupper())
+    if caps/len(words) >= 0.65 and len(words) <= 8: return True
+    return False
+
+def text_to_epub(raw_text, title, author='Convertido de PDF'):
+    raw_text = clean_text(raw_text)
+    paras = [p.strip() for p in re.split(r'\\n{2,}', raw_text) if p.strip()]
+    
+    # Split into chapters
+    chapters = []
+    ch_title = title
+    ch_paras = []
+    
+    for p in paras:
+        if is_heading(p) and ch_paras:
+            chapters.append((ch_title, ch_paras))
+            ch_title = p
+            ch_paras = []
+        else:
+            ch_paras.append(p)
+    if ch_paras:
+        chapters.append((ch_title, ch_paras))
+    
+    if not chapters:
+        chapters = [(title, paras)]
+    
+    uid = 'pdf2epub-' + datetime.now().strftime('%Y%m%d%H%M%S')
+    
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+        # mimetype — MUST be first and uncompressed
+        zf.writestr(zipfile.ZipInfo('mimetype'), 'application/epub+zip')
+        
+        # Container
+        zf.writestr('META-INF/container.xml', '''<?xml version="1.0" encoding="UTF-8"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles>
+    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+  </rootfiles>
+</container>''')
+        
+        # CSS
+        css = """body{font-family:Georgia,serif;font-size:1em;line-height:1.65;margin:1em 2em;color:#111}
+h1{font-size:1.3em;margin:2em 0 .6em;color:#000;border-bottom:1px solid #ccc;padding-bottom:.3em}
+p{margin:.5em 0;text-align:justify}"""
+        zf.writestr('OEBPS/style.css', css)
+        
+        # Chapter files
+        manifest_items = []
+        spine_items    = []
+        toc_entries    = []
+        nav_points     = []
+        
+        for i, (ch_t, ch_ps) in enumerate(chapters):
+            cid  = f'chap{i+1:03d}'
+            fname= f'OEBPS/{cid}.xhtml'
+            safe_title = ch_t.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;').replace('"','&quot;')
+            body = '\\n'.join(f'<p>{p.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")}</p>' for p in ch_ps)
+            xhtml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head><title>{safe_title}</title>
+<link rel="stylesheet" href="style.css" type="text/css"/></head>
+<body><h1>{safe_title}</h1>
+{body}
+</body></html>"""
+            zf.writestr(fname, xhtml)
+            manifest_items.append(f'<item id="{cid}" href="{cid}.xhtml" media-type="application/xhtml+xml"/>')
+            spine_items.append(f'<itemref idref="{cid}"/>')
+            toc_entries.append(f'<li><a href="{cid}.xhtml">{safe_title}</a></li>')
+            nav_points.append(f'<navPoint id="n{i+1}" playOrder="{i+1}"><navLabel><text>{safe_title}</text></navLabel><content src="{cid}.xhtml"/></navPoint>')
+        
+        # Nav (EPUB3)
+        nav = f"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+<head><title>{title}</title></head>
+<body>
+<nav epub:type="toc"><h1>Índice</h1>
+<ol>{''.join(toc_entries)}</ol>
+</nav></body></html>"""
+        zf.writestr('OEBPS/nav.xhtml', nav)
+        manifest_items.append('<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>')
+        
+        # NCX (EPUB2 compat)
+        ncx = f"""<?xml version="1.0" encoding="UTF-8"?>
+<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+<head><meta name="dtb:uid" content="{uid}"/></head>
+<docTitle><text>{title}</text></docTitle>
+<navMap>{''.join(nav_points)}</navMap>
+</ncx>"""
+        zf.writestr('OEBPS/toc.ncx', ncx)
+        manifest_items.append('<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>')
+        manifest_items.append('<item id="css" href="style.css" media-type="text/css"/>')
+        
+        safe_t = title.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')
+        # OPF
+        opf = f"""<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid">
+<metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:identifier id="uid">{uid}</dc:identifier>
+  <dc:title>{safe_t}</dc:title>
+  <dc:creator>{author}</dc:creator>
+  <dc:language>pt</dc:language>
+  <meta property="dcterms:modified">{datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')}</meta>
+</metadata>
+<manifest>
+{'chr(10).join(manifest_items)}
+</manifest>
+<spine toc="ncx">
+{'chr(10).join(spine_items)}
+</spine>
+</package>"""
+        zf.writestr('OEBPS/content.opf', opf)
+    
+    return buf.getvalue()
+
+print('Python EPUB builder ready')
+`);
+
+  initPct.textContent = '100%';
+  initText.textContent = 'Pronto!';
+  pyReady = true;
+
+  setTimeout(() => initBar.classList.add('hidden'), 1200);
+  
+  // Enable convert if file already selected
+  if(selectedFile) btnConvert.disabled = false;
+}
+
+// ── File handling ──────────────────────────────────────
+async function setFile(file){
+  if(!file?.name.toLowerCase().endsWith('.pdf')){
+    showStatus('error','Por favor, selecione um arquivo .pdf válido.'); return;
+  }
+  selectedFile = file;
+  fnameEl.textContent = file.name;
+  fsizeEl.textContent = fmt(file.size);
+  fileBar.classList.add('visible');
+  clearStatus();
+  if(pyReady) btnConvert.disabled = false;
+
+  // Render preview
+  try{
+    const buf = await file.arrayBuffer();
+    const pdf = await window._pdfjs.getDocument({data: buf}).promise;
+    pdfDoc = pdf;
+    const page = await pdf.getPage(1);
+    const vp = page.getViewport({scale: 1.2});
+    previewCanvas.width  = vp.width;
+    previewCanvas.height = vp.height;
+    const ctx = previewCanvas.getContext('2d');
+    await page.render({canvasContext: ctx, viewport: vp}).promise;
+    prevPages.textContent = pdf.numPages + (pdf.numPages===1?' página':' páginas');
+    prevDims.textContent  = Math.round(vp.width)+'×'+Math.round(vp.height)+' px';
+    previewWrap.classList.add('visible');
+  }catch(e){
+    console.warn('Preview failed:', e);
+  }
+}
+
+function clearFile(){
+  selectedFile = null; pdfDoc = null;
+  fileInput.value = '';
+  fileBar.classList.remove('visible');
+  previewWrap.classList.remove('visible');
+  btnConvert.disabled = true;
+  clearStatus();
+  progressCard.classList.remove('visible');
+  progLog.innerHTML = '';
+}
+
+dropZone.addEventListener('dragover', e=>{e.preventDefault();dropZone.classList.add('drag-over')});
+dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e=>{e.preventDefault();dropZone.classList.remove('drag-over');if(e.dataTransfer.files[0])setFile(e.dataTransfer.files[0])});
+fileInput.addEventListener('change',()=>{if(fileInput.files[0])setFile(fileInput.files[0])});
+btnClear.addEventListener('click', clearFile);
+
+// ── Conversion ────────────────────────────────────────
+btnConvert.addEventListener('click', async ()=>{
+  if(!selectedFile || !pyReady) return;
+
+  btnConvert.disabled = true;
+  progressCard.classList.add('visible');
+  progLog.innerHTML = '';
+  clearStatus();
+  btnDl.classList.remove('visible');
+  setProgress(0, 'Iniciando…');
+
+  const title = selectedFile.name.replace(/\.pdf$/i,'').replace(/[-_]/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+  let usedOCR = false;
+
+  try {
+    // ── Step 1: Read PDF bytes ───────────────────────
+    setProgress(5, 'Lendo arquivo…');
+    log('Lendo '+selectedFile.name+' ('+fmt(selectedFile.size)+')');
+    const arrayBuf = await selectedFile.arrayBuffer();
+    const pdfBytes = new Uint8Array(arrayBuf);
+
+    // ── Step 2: Extract text with pdfminer ──────────
+    setProgress(15, 'Extraindo texto com pdfminer…');
+    log('Extraindo texto via pdfminer.six…');
+
+    pyodide.globals.set('pdf_bytes', pdfBytes);
+    const extractedText = await pyodide.runPythonAsync(`
+import io
+from pdfminer.high_level import extract_text as _extract
+
+pdf_io = io.BytesIO(bytes(pdf_bytes))
+try:
+    result = _extract(pdf_io)
+except Exception as e:
+    result = ''
+result
+`);
+
+    let finalText = extractedText || '';
+    const wordCount = finalText.trim().split(/\s+/).filter(Boolean).length;
+    log('Texto extraído: '+wordCount+' palavras');
+
+    // ── Step 3: OCR if needed ────────────────────────
+    if(wordCount < 50){
+      usedOCR = true;
+      log('Texto insuficiente — ativando OCR…', 'log-warn');
+      setProgress(20, 'Renderizando páginas para OCR…');
+
+      const pdf = pdfDoc || await window._pdfjs.getDocument({data: pdfBytes}).promise;
+      const numPages = pdf.numPages;
+      const ocrParts = [];
+
+      const worker = await Tesseract.createWorker('por+eng', 1, {
+        logger: m => {
+          if(m.status === 'recognizing text'){
+            const pgProgress = 20 + ((m.progress * 100) / numPages);
+            setProgress(Math.min(pgProgress + ocrParts.length * (55/numPages), 75),
+              `OCR página ${ocrParts.length+1}/${numPages}…`);
+          }
+        }
+      });
+
+      const ocrCanvas = document.createElement('canvas');
+      const ocrCtx = ocrCanvas.getContext('2d');
+
+      for(let p=1; p<=numPages; p++){
+        setProgress(20 + (p-1)/numPages*55, `OCR página ${p}/${numPages}…`);
+        log(`OCR página ${p}/${numPages}`);
+        const page = await pdf.getPage(p);
+        const vp = page.getViewport({scale: 2.0}); // high-res for OCR
+        ocrCanvas.width  = vp.width;
+        ocrCanvas.height = vp.height;
+        await page.render({canvasContext: ocrCtx, viewport: vp}).promise;
+        const {data:{text}} = await worker.recognize(ocrCanvas);
+        if(text.trim()) ocrParts.push(text.trim());
+      }
+
+      await worker.terminate();
+      finalText = ocrParts.join('\n\n');
+      const ocrWords = finalText.trim().split(/\s+/).filter(Boolean).length;
+      log('OCR completo: '+ocrWords+' palavras extraídas','log-ok');
+    } else {
+      log('Texto ok — OCR não necessário','log-ok');
+    }
+
+    if(!finalText.trim()){
+      throw new Error('Não foi possível extrair texto do PDF. Tente um arquivo diferente.');
+    }
+
+    // ── Step 4: Build EPUB ───────────────────────────
+    setProgress(82, 'Construindo EPUB…');
+    log('Montando estrutura EPUB…');
+
+    pyodide.globals.set('raw_text', finalText);
+    pyodide.globals.set('epub_title', title);
+    const epubBytes = await pyodide.runPythonAsync(`
+result = text_to_epub(raw_text, epub_title)
+import js
+js.Uint8Array.new(list(result))
+`);
+
+    setProgress(95, 'Empacotando…');
+    log('EPUB criado com sucesso','log-ok');
+
+    // ── Step 5: Download ─────────────────────────────
+    setProgress(100, 'Concluído!');
+    const blob = new Blob([epubBytes], {type:'application/epub+zip'});
+    const url  = URL.createObjectURL(blob);
+    const dlName = title.replace(/[^a-zA-Z0-9_\- ]/g,'')+'.epub';
+
+    btnDl.href     = url;
+    btnDl.download = dlName;
+    btnDl.classList.add('visible');
+
+    const ocrNote = usedOCR ? ' <span class="ocr-badge">OCR</span>' : '';
+    showStatus('success', `✅ "${dlName}" pronto para download!${ocrNote}`);
+    log('Download pronto: '+dlName,'log-ok');
+
+  } catch(err){
+    setProgress(0,'Erro');
+    log('Erro: '+err.message,'log-err');
+    showStatus('error','❌ '+err.message);
+    console.error(err);
+  } finally {
+    btnConvert.disabled = false;
+  }
+});
+
+// ── Boot ──────────────────────────────────────────────
+loadPyodide().catch(e=>{
+  initText.textContent = 'Erro ao carregar Python: '+e.message;
+  initPct.textContent  = '✕';
+  console.error(e);
+});
+</script>
+</body>
+</html>

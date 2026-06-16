@@ -39,21 +39,6 @@ Conversor de PDF para EPUB que roda inteiramente no navegador. Nenhum arquivo é
 - O carregamento inicial pode levar 10–20s dependendo da conexão (Pyodide pesa ~10MB)
 - PDFs muito grandes (100+ páginas) podem ser lentos no OCR
 
-## Publicar no GitHub Pages
-
-```bash
-# 1. Crie um repositório e faça push do index.html
-git init
-git add index.html README.md
-git commit -m "first commit"
-git remote add origin https://github.com/seu-usuario/nome-do-repo.git
-git push -u origin main
-
-# 2. Ative o GitHub Pages
-# Settings → Pages → Source: Deploy from branch → main / (root)
-```
-
-O site estará disponível em `https://seu-usuario.github.io/nome-do-repo`.
 
 ## Estrutura do repositório
 

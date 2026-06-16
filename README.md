@@ -2,7 +2,7 @@
 
 Conversor de PDF para EPUB que roda inteiramente no navegador. Nenhum arquivo é enviado para servidores — tudo é processado localmente via WebAssembly.
 
-**[→ Acessar conversor]([https://seu-usuario.github.io/nome-do-repo](https://guilhermeschulz.github.io/EpubConverterMandinha/))**
+**[→ Acessar conversor](https://guilhermeschulz.github.io/EpubConverterMandinha/)**
 
 ---
 

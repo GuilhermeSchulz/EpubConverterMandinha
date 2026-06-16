@@ -483,6 +483,10 @@ p{margin:.5em 0;text-align:justify}"""
         manifest_items.append('<item id="css" href="style.css" media-type="text/css"/>')
         
         safe_t = title.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')
+        nl = '\n'
+        manifest_str = nl.join(manifest_items)
+        spine_str    = nl.join(spine_items)
+        modified     = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
         # OPF
         opf = f"""<?xml version="1.0" encoding="UTF-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid">
@@ -491,13 +495,13 @@ p{margin:.5em 0;text-align:justify}"""
   <dc:title>{safe_t}</dc:title>
   <dc:creator>{author}</dc:creator>
   <dc:language>pt</dc:language>
-  <meta property="dcterms:modified">{datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')}</meta>
+  <meta property="dcterms:modified">{modified}</meta>
 </metadata>
 <manifest>
-{'chr(10).join(manifest_items)}
+{manifest_str}
 </manifest>
 <spine toc="ncx">
-{'chr(10).join(spine_items)}
+{spine_str}
 </spine>
 </package>"""
         zf.writestr('OEBPS/content.opf', opf)

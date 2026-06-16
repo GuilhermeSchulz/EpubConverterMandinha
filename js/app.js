@@ -25,7 +25,6 @@ async function init() {
       initText.textContent = text;
       initPct.textContent = pct;
     });
-    setTimeout(() => initBar.classList.add('hidden'), 1200);
     updateToolbar();
   } catch (e) {
     initText.textContent = 'Erro ao carregar Python: ' + e.message;

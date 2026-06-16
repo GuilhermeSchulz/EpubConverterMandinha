@@ -483,7 +483,7 @@ p{margin:.5em 0;text-align:justify}"""
         manifest_items.append('<item id="css" href="style.css" media-type="text/css"/>')
         
         safe_t = title.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')
-        nl = '\n'
+        nl = chr(10)
         manifest_str = nl.join(manifest_items)
         spine_str    = nl.join(spine_items)
         modified     = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')

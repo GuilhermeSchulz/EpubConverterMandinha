@@ -16,27 +16,29 @@ const dropZone = document.getElementById('drop-zone');
 
 // Inicialização coordenada
 async function init() {
-  const initBar = document.getElementById('init-bar');
   const initText = document.getElementById('init-text');
   const initPct = document.getElementById('init-pct');
-
   try {
+    // Atualiza o progresso dinamicamente
     await pyService.initialize((text, pct) => {
-      initText.textContent = text;
-      initPct.textContent = pct;
+      if (initText) initText.textContent = text;
+      if (initPct) initPct.textContent = pct;
     });
+    
+    // REMOVIDO: O setTimeout que ocultava a barra com classList.add('hidden')
+    // A barra agora permanecerá travada no rodapé dizendo "Pronto! 100%"
+    
     updateToolbar();
   } catch (e) {
-    initText.textContent = 'Erro ao carregar Python: ' + e.message;
-    initPct.textContent = '✕';
+    if (initText) initText.textContent = 'Erro ao carregar Python: ' + e.message;
+    if (initPct) initPct.textContent = '✕';
+    console.error(e);
   }
 }
 
 // Atualização da UI da Fila
 function updateToolbar() {
   const n = queue.length;
-  if (n === 0) { toolbar.classList.remove('visible'); return; }
-  toolbar.classList.add('visible');
   const done = queue.filter(q => q.status === 'done').length;
   const err = queue.filter(q => q.status === 'error').length;
   const wait = queue.filter(q => q.status === 'waiting').length;

@@ -44,7 +44,16 @@ Conversor de PDF para EPUB que roda inteiramente no navegador. Nenhum arquivo é
 
 ```
 .
-├── index.html   # Aplicação completa (HTML + CSS + JS + Python embutidos)
+├── css/
+│   └── style.css          # Todo o CSS extraído do <style>
+├── js/
+│   ├── services/
+│   │   ├── ocrService.js  # Lógica do Tesseract.js
+│   │   └── pyService.js   # Inicialização do Pyodide e chamadas Python
+│   └── app.js             # Manipulação do DOM e controle da fila (Core)
+├── python/
+│   └── converter.py       # Lógica pura do gerador de EPUB
+├── index.html             # Apenas a marcação HTML limpa e import do app.js
 └── README.md
 ```
 

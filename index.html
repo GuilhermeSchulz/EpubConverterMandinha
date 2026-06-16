@@ -552,7 +552,7 @@ async function loadPyodide(){
   await micropip.install('pdfminer.six');
   initText.textContent='Preparando conversor…'; initPct.textContent='80%';
 
-  await pyodide.runPythonAsync(`
+ await pyodide.runPythonAsync(`
 import zipfile, io, re
 from datetime import datetime
 
@@ -583,7 +583,8 @@ def is_heading(text):
 
 def text_to_epub(raw_text, title, author='Convertido de PDF'):
     raw_text = clean_text(raw_text)
-    paras = [p.strip() for p in re.split(r'\n{2,}', raw_text) if p.strip()]
+    # CORREÇÃO: Dupla barra para não quebrar a string no JS
+    paras = [p.strip() for p in re.split(r'\\n{2,}', raw_text) if p.strip()] 
     chapters = []
     ch_title = title
     ch_paras = []
